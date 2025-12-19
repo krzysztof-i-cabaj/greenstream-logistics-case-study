@@ -11,7 +11,7 @@
 
 The full HTML report with interactive charts, query plan analysis (EXPLAIN PLAN), and RAG module demonstration is available here:
 
-### [👉 View Case Study Report (GitHub Pages)](https://krzysztof-i-cabaj.github.io/greenstream-logistics-case-study/)
+### [👉 View Case Study Report (GitHub Pages)](https://krzysztof-i-cabaj.github.io/greenstream-logistics-case-study/docs)
 
 ---
 
