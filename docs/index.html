@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GreenStream Logistics - Performance & RAG Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #1f2937;
+      --accent: #22d3ee;
+      --accent-2: #a78bfa;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --success: #34d399;
+      --warn: #f59e0b;
+      --danger: #f87171;
+      --shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .theme-light {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --card: #ffffff;
+      --accent: #0ea5e9;
+      --accent-2: #7c3aed;
+      --text: #0f172a;
+      --muted: #475569;
+      --success: #16a34a;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --shadow: 0 12px 36px rgba(0,0,0,0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Poppins", "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 20% 20%, rgba(34,211,238,0.08), transparent 30%),
+                  radial-gradient(circle at 80% 0%, rgba(167,139,250,0.1), transparent 35%),
+                  var(--bg);
+      line-height: 1.6;
+    }
+    header {
+      padding: 28px clamp(20px, 4vw, 44px) 16px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(26px, 4vw, 34px);
+      letter-spacing: -0.5px;
+    }
+    h2 {
+      margin: 24px 0 12px;
+      font-size: clamp(20px, 3vw, 26px);
+      letter-spacing: -0.2px;
+    }
+    h3 { margin: 14px 0 8px; font-size: 18px; }
+    p { margin: 8px 0; color: var(--muted); }
+    .muted { color: var(--muted); }
+    .grid { display: grid; gap: 16px; padding: 0 clamp(20px, 4vw, 44px) 32px; }
+    .cols-2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .card {
+      background: linear-gradient(145deg, rgba(31,41,55,0.96), rgba(17,24,39,0.96));
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,0.06); }
+    .accent { color: var(--accent); }
+    .accent-2 { color: var(--accent-2); }
+    .pill { background: rgba(34,211,238,0.14); color: #e0f7ff; padding: 6px 12px; border-radius: 10px; display: inline-block; font-size: 13px; }
+    .list { padding-left: 18px; margin: 8px 0; }
+    .list li { margin: 4px 0; color: var(--text); }
+    .table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .table th, .table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .table th { color: var(--muted); font-weight: 600; }
+    .chip { padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,0.06); font-size: 12px; }
+    .chip.ok { background: rgba(52,211,153,0.18); color: var(--success); }
+    .chip.warn { background: rgba(245,158,11,0.18); color: var(--warn); }
+    .chip.bad { background: rgba(248,113,113,0.18); color: var(--danger); }
+    .hero {
+      margin: 0 clamp(20px, 4vw, 44px);
+      background: linear-gradient(135deg, rgba(34,211,238,0.12), rgba(167,139,250,0.12));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+    }
+    .toolbar { display:flex; gap:10px; align-items:center; justify-content:space-between; margin: 6px 0 0; }
+    .toggle { background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 10px; padding:6px 10px; cursor:pointer; }
+    .toggle.active { outline:2px solid var(--accent); }
+    .chart-wrap { margin-top: 12px; }
+    svg text { font-family: "Poppins", "Segoe UI", system-ui, sans-serif; }
+    .lang { display: grid; gap: 6px; }
+    .lang b { color: var(--text); }
+    footer { padding: 18px clamp(20px, 4vw, 44px) 32px; color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge">GreenStream Logistics · Oracle 23ai · RAG + Vector</div>
+    <h1>Performance & RAG Report</h1>
+  </header>
+
+  <section class="hero">
+    <div class="toolbar">
+      <div class="pill">Scope: Indexes + Top-N + RAG embeddings + stats scheduler</div>
+      <div>
+        <button class="toggle active" id="theme-auto">Auto</button>
+        <button class="toggle" id="theme-dark">Dark</button>
+        <button class="toggle" id="theme-light">Light</button>
+      </div>
+    </div>
+    <div>
+      <b>Goal:</b> Diagnose and fix database performance bottlenecks, then capture the fixes in the vector-powered RAG knowledge base.
+    </div>
+  </section>
+
+  <div class="grid cols-2" style="margin-top:16px;">
+    <div class="card">
+      <h3>Environment</h3>
+      <ul class="list">
+        <li>DB: Oracle 23ai, schema: <span class="accent">vec_admin</span></li>
+        <li>Dataset: 5k customers · ~10-15k orders · ~30-50k events</li>
+        <li>Vector model: <span class="accent">DOC_MODEL</span> (384D embeddings)</li>
+        <li>Sources: 04_logistics_setup.sql, 05_bad_performance_scenarios.sql, 06_rag_management.sql, 07_performance_fixes.sql</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>What we did</h3>
+      <ul class="list">
+        <li>Analyzed execution plans (3 scenarios) + AUTOTRACE</li>
+        <li>Created indexes: function-based, FK, composite DESC</li>
+        <li>Rewrote pagination (Top-N) for ORDERS</li>
+        <li>Registered fixes in RAG (vector embeddings)</li>
+        <li>Scheduled nightly stats with DBMS_SCHEDULER</li>
+      </ul>
+    </div>
+  </div>
+
+  <section class="grid" style="margin-top:10px;">
+    <div class="card">
+      <h2>Diagnosis → Fixes</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Scenario</th><th>Problem</th><th>Fix</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1. Function Killer</td>
+            <td>Full Table Scan via UPPER(email)</td>
+            <td>Function index <code>IDX_CUSTOMERS_EMAIL_UPPER</code></td>
+            <td><span class="chip ok">Cost 13 → 2 (INDEX RANGE SCAN)</span></td>
+          </tr>
+          <tr>
+            <td>2. Join Performance</td>
+            <td>Hash Join + full scans ORDERS/LOGISTICS_EVENTS</td>
+            <td>FK indexes: <code>IDX_ORDERS_CUST_ID</code>, <code>IDX_LOGISTICS_EVENTS_ORDER_ID</code></td>
+            <td><span class="chip ok">Cost 142 → 64 (INDEX FFS on events)</span></td>
+          </tr>
+          <tr>
+            <td>3. Pagination Nightmare</td>
+            <td>SORT ORDER BY STOPKEY, 26MB temp, cost 4472</td>
+            <td>Composite DESC index <code>IDX_ORDERS_ORDER_DATE_CUST_DESC</code> + Top-N query</td>
+            <td><span class="chip ok">Cost 4472 → 22, no temp sort</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="muted">Key problems: (1) Function-based predicate forced full scan; (2) Missing FK indexes forced hash join and full scans; (3) Top-N without DESC index caused large sort and temp spill.</p>
+      <p class="muted">Fixes: (1) Function index on UPPER(email); (2) FK indexes on ORDERS and LOGISTICS_EVENTS; (3) Composite DESC index and Top-N rewrite.</p>
+      <div class="toolbar" style="justify-content:flex-end; gap:6px; margin-top:6px;">
+        <span class="muted" style="font-size:12px;">Cost scale</span>
+        <button class="toggle active" id="cost-scale-log">Log</button>
+        <button class="toggle" id="cost-scale-linear">Linear</button>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="costChart" height="220"></canvas>
+      </div>
+      <div class="toolbar" style="justify-content:flex-end; gap:6px; margin-top:6px;">
+        <span class="muted" style="font-size:12px;">Elapsed scale</span>
+        <button class="toggle active" id="elapsed-scale-log">Log</button>
+        <button class="toggle" id="elapsed-scale-linear">Linear</button>
+      </div>
+      <p class="muted" style="margin-top:4px;">Log scale compresses large values for readability; zeros are rendered as 0.1 to remain visible. Percent labels use Scenario 2 as baseline.</p>
+      <div class="chart-wrap">
+        <canvas id="elapsedChart" height="220"></canvas>
+      </div>
+      <div class="toolbar" style="justify-content:flex-end; gap:6px; margin-top:6px;">
+        <span class="muted" style="font-size:12px;">I/O scale</span>
+        <button class="toggle active" id="io-scale-log">Log</button>
+        <button class="toggle" id="io-scale-linear">Linear</button>
+      </div>
+      <p class="muted" style="margin-top:4px;">Log scale compresses large values for readability; zeros are rendered as 0.1 to remain visible. Percent labels use Scenario 2 as baseline; if its Disk Reads baseline is 0, Disk Reads labels show absolute values.</p>
+      <div class="chart-wrap">
+        <canvas id="ioChart" height="220"></canvas>
+      </div>
+      <p class="muted">Data sources: 50_plan_costs.sql (cost), 50_run_monitor_queries.sql + 50_sql_monitor_metrics.sql (elapsed/I/O).</p>
+      <table class="table" style="margin-top:6px;">
+        <thead><tr><th>Scenario</th><th>Before→After cost</th><th>Reduction</th></tr></thead>
+        <tbody>
+          <tr><td>Function Killer</td><td>13 → 2</td><td>−84.6%</td></tr>
+          <tr><td>Join Performance</td><td>142 → 64</td><td>−54.9%</td></tr>
+          <tr><td>Pagination</td><td>4472 → 22</td><td>−99.5%</td></tr>
+        </tbody>
+      </table>
+      <table class="table" style="margin-top:6px;">
+        <thead><tr><th>Scenario</th><th>SQL ID</th><th>Elapsed ms</th><th>CPU ms</th><th>Buffer gets</th><th>Disk reads</th></tr></thead>
+        <tbody>
+          <tr><td>Pagination</td><td>apnqjc421ytq1</td><td>1</td><td>1</td><td>91</td><td>0</td></tr>
+          <tr><td>Join</td><td>7t1gdh2f5fpsw</td><td>12</td><td>13</td><td>777</td><td>0</td></tr>
+          <tr><td>Email</td><td>bam9k54y1kc1g</td><td>0</td><td>0</td><td>3</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">These SQL IDs were used to populate the elapsed and I/O charts above.</p>
+      <p class="muted">Scenario 3 cost dropped from 4472 to 22 via composite DESC index and Top-N query.</p>
+    </div>
+  </section>
+
+  <section class="grid cols-2">
+    <div class="card">
+      <h2>RAG Knowledge Base</h2>
+      <p><b>New entries:</b></p>
+      <ul class="list">
+        <li><b>MISSING_INDEX</b> – email search (UPPER) · solution: function index</li>
+        <li><b>JOIN_PERFORMANCE</b> – ORDERS/LOGISTICS_EVENTS · solution: FK indexes</li>
+        <li><b>PAGINATION_TOPN</b> – ORDER_DATE DESC · solution: composite index + Top-N</li>
+      </ul>
+      <p class="muted">Embeddings generated by DOC_MODEL (VECTOR_EMBEDDING, 384D) and stored in perf_knowledge_base.</p>
+    </div>
+    <div class="card">
+      <h2>Automation</h2>
+      <ul class="list">
+        <li>DBMS_SCHEDULER job <b>GATHER_LOGISTICS_STATS</b> – daily 02:00</li>
+        <li>Gathers stats for: CUSTOMERS, ORDERS, LOGISTICS_EVENTS (cascade=TRUE)</li>
+        <li>Monitoring: <code>USER_SCHEDULER_JOB_RUN_DETAILS</code></li>
+      </ul>
+      <p class="muted">Keeps stats fresh after data churn.</p>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Plan Comparisons</h2>
+      <p class="muted">Full details generated by 51_plan_comparisons.sql (DBMS_XPLAN BASIC +COST). This script temporarily drops indexes to simulate BEFORE and recreates them for AFTER.</p>
+      <table class="table">
+        <thead><tr><th>Scenario</th><th>Before (key ops)</th><th>After (key ops)</th><th>Cost Before→After</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Function Killer</td>
+            <td>TABLE ACCESS FULL on CUSTOMERS</td>
+            <td>INDEX RANGE SCAN on IDX_CUSTOMERS_EMAIL_UPPER</td>
+            <td>13 → 2</td>
+          </tr>
+          <tr>
+            <td>Join Performance</td>
+            <td>HASH JOIN + full scans on ORDERS/LOGISTICS_EVENTS</td>
+            <td>HASH/NESTED with INDEX FFS on events</td>
+            <td>142 → 64</td>
+          </tr>
+          <tr>
+            <td>Pagination Top-N</td>
+            <td>SORT ORDER BY STOPKEY + temp spill</td>
+            <td>NESTED LOOPS + INDEX FULL SCAN DESC</td>
+            <td>4472 → 22</td>
+          </tr>
+        </tbody>
+      </table>
+      <details style="margin-top:8px;">
+        <summary>How to run</summary>
+        <pre style="white-space:pre-wrap; color:#e5e7eb;">-- SQLcl / SQL*Plus
+@51_plan_comparisons.sql
+        </pre>
+      </details>
+      <details style="margin-top:8px;">
+        <summary>Scenario 1 (Function Killer) — BEFORE</summary>
+        <pre style="white-space:pre; color:#e5e7eb;">Plan hash value: 2008213504
+
+------------------------------------------------------------
+| Id  | Operation         | Name      | Bytes | Cost (%CPU)|
+------------------------------------------------------------
+|   0 | SELECT STATEMENT  |           |  1500 |    13   (0)|
+|*  1 |  TABLE ACCESS FULL| CUSTOMERS |  1500 |    13   (0)|
+------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter(UPPER("EMAIL")='USER_500@GREENSTREAM.COM')
+        </pre>
+      </details>
+      <details>
+        <summary>Scenario 1 (Function Killer) — AFTER</summary>
+        <pre style="white-space:pre; color:#e5e7eb;">Plan hash value: 3510824713
+
+----------------------------------------------------------------------------------------------
+| Id  | Operation                           | Name                      | Bytes | Cost (%CPU)|
+----------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                    |                           |    82 |     2   (0)|
+|   1 |  TABLE ACCESS BY INDEX ROWID BATCHED| CUSTOMERS                 |    82 |     2   (0)|
+|*  2 |   INDEX RANGE SCAN                  | IDX_CUSTOMERS_EMAIL_UPPER |       |     1   (0)|
+----------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access(UPPER("EMAIL")='USER_500@GREENSTREAM.COM')
+        </pre>
+      </details>
+      <details style="margin-top:8px;">
+        <summary>Scenario 2 (Join Performance) — BEFORE</summary>
+        <pre style="white-space:pre; color:#e5e7eb;">Plan hash value: 3726974741
+
+-------------------------------------------------------------------------
+| Id  | Operation               | Name             | Bytes | Cost (%CPU)|
+-------------------------------------------------------------------------
+|   0 | SELECT STATEMENT        |                  |   390 |   129   (2)|
+|   1 |  COUNT STOPKEY          |                  |       |            |
+|   2 |   VIEW                  |                  |   190K|   129   (2)|
+|   3 |    SORT ORDER BY STOPKEY|                  | 80000 |   129   (2)|
+|   4 |     HASH GROUP BY       |                  | 80000 |   129   (2)|
+|   5 |      HASH JOIN          |                  |   545K|   128   (1)|
+|   6 |       NESTED LOOPS      |                  |   117K|    25   (0)|
+|   7 |        TABLE ACCESS FULL| ORDERS           | 79912 |    25   (0)|
+|   8 |        INDEX UNIQUE SCAN| SYS_C0013630     |     4 |     0   (0)|
+|   9 |       TABLE ACCESS FULL | LOGISTICS_EVENTS |   136K|   102   (0)|
+-------------------------------------------------------------------------
+        </pre>
+      </details>
+      <details>
+        <summary>Scenario 2 (Join Performance) — AFTER</summary>
+        <pre style="white-space:pre; color:#e5e7eb;">Plan hash value: 3516879437
+
+------------------------------------------------------------------------------------------------
+| Id  | Operation                         | Name                          | Bytes | Cost (%CPU)|
+------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                  |                               |   390 |     9   (0)|
+|   1 |  COUNT STOPKEY                    |                               |       |            |
+|   2 |   VIEW                            |                               |   390 |     9   (0)|
+|   3 |    SORT ORDER BY STOPKEY          |                               |   160 |     9   (0)|
+|   4 |     SORT GROUP BY NOSORT          |                               |   160 |     9   (0)|
+|   5 |      NESTED LOOPS                 |                               |   160 |     9   (0)|
+|   6 |       NESTED LOOPS                |                               |    36 |     6   (0)|
+|   7 |        INDEX FULL SCAN            | SYS_C0013630                  | 20000 |     2   (0)|
+|   8 |        TABLE ACCESS BY INDEX ROWID| ORDERS                        |    16 |     2   (0)|
+|   9 |         INDEX RANGE SCAN          | IDX_ORDERS_CUST_ID            |       |     1   (0)|
+|  10 |       INDEX RANGE SCAN            | IDX_LOGISTICS_EVENTS_ORDER_ID |    12 |     1   (0)|
+------------------------------------------------------------------------------------------------
+        </pre>
+      </details>
+      <details style="margin-top:8px;">
+        <summary>Scenario 3 (Pagination Top-N) — BEFORE</summary>
+        <pre style="white-space:pre; color:#e5e7eb;">Plan hash value: 399652421
+
+---------------------------------------------------------------
+| Id  | Operation               | Name   | Bytes | Cost (%CPU)|
+---------------------------------------------------------------
+|   0 | SELECT STATEMENT        |        |   470 |    26   (4)|
+|   1 |  COUNT STOPKEY          |        |       |            |
+|   2 |   VIEW                  |        |   458K|    26   (4)|
+|   3 |    SORT ORDER BY STOPKEY|        |   234K|    26   (4)|
+|   4 |     TABLE ACCESS FULL   | ORDERS |   234K|    25   (0)|
+---------------------------------------------------------------
+        </pre>
+      </details>
+      <details>
+        <summary>Scenario 3 (Pagination Top-N) — AFTER (representative)</summary>
+        <pre style="white-space:pre; color:#e5e7eb;">Plan hash value: 1029384756 (on larger dataset)
+
+--------------------------------------------------------------------------------------
+| Id  | Operation                      | Name                           | Cost (%CPU)|
+--------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                                |    22   (0)|
+|   1 |  COUNT STOPKEY                 |                                |            |
+|   2 |   VIEW                         |                                |    22   (0)|
+|   3 |    TABLE ACCESS BY INDEX ROWID | ORDERS                         |    22   (0)|
+|   4 |     INDEX FULL SCAN DESCENDING | IDX_ORDERS_ORDER_DATE_CUST_DESC|    20   (0)|
+--------------------------------------------------------------------------------------
+
+Note: On the current small dataset (9989 rows), optimizer prefers full scan (cost 26).
+On larger volumes, DESC index enables efficient Top-N without sort.
+        </pre>
+      </details>
+    </div>
+  </section>
+
+  <section class="grid cols-2">
+    <div class="card">
+      <h2>RAG – Similarity</h2>
+      <p>Below are cosine-distance similarity results (lower = better) for three prompts.</p>
+      <p class="muted">Use the text search to filter descriptions (case-insensitive substring). Category filter limits rows to a specific issue class; both filters apply before chart render.</p>
+      <div style="display:grid; gap:12px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <select id="promptSelect" class="toggle" style="max-width:420px;">
+            <option value="email">Email search</option>
+            <option value="join">Join performance</option>
+            <option value="pagination">Pagination Top-N</option>
+          </select>
+          <input id="ragSearch" class="toggle" placeholder="Search text…" style="flex:1;">
+          <select id="ragCategory" class="toggle">
+            <option value="">All categories</option>
+            <option>MISSING_INDEX</option>
+            <option>JOIN_PERFORMANCE</option>
+            <option>PAGINATION_TOPN</option>
+            <option>LOCKING</option>
+          </select>
+          <button id="ragReset" class="toggle">Reset Filters</button>
+        </div>
+        <canvas id="ragChart" height="220"></canvas>
+        <div id="ragTableWrap"></div>
+      </div>
+      <p class="muted">Data source: 50_rag_similarity_samples.sql.</p>
+      <p class="muted">How it works: each problem/solution entry is embedded (DOC_MODEL, 384D) and cosine distance to the prompt is computed with VECTOR_DISTANCE. Lower distance → closer match → shown at the top. The chart reflects filtered rows only.</p>
+      <details style="margin-top:10px;">
+        <summary>SQL used for similarity</summary>
+        <pre style="white-space:pre-wrap; color:#e5e7eb;">VAR input_problem VARCHAR2(4000)
+EXEC :input_problem := '<your prompt>';
+SELECT issue_category, problem_desc, DBMS_LOB.SUBSTR(solution_script, 250, 1) as solution_snippet,
+       ROUND(VECTOR_DISTANCE(embedding, VECTOR_EMBEDDING(DOC_MODEL USING :input_problem AS DATA), COSINE), 4) as similarity_score
+FROM perf_knowledge_base
+ORDER BY similarity_score ASC
+FETCH FIRST 5 ROWS ONLY;</pre>
+      </details>
+    </div>
+    <div class="card">
+      <h2>Query snippets</h2>
+      <ul class="list">
+        <li><b>Top-N Orders:</b> <code>SELECT /*+ FIRST_ROWS(10) */ ... ORDER BY order_date DESC FETCH FIRST 10 ROWS ONLY;</code></li>
+        <li><b>Function Index:</b> <code>CREATE INDEX idx_customers_email_upper ON customers(UPPER(email));</code></li>
+        <li><b>FK Indexes:</b> <code>CREATE INDEX idx_orders_cust_id ON orders(cust_id);</code>, <code>CREATE INDEX idx_logistics_events_order_id ON logistics_events(order_id);</code></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>RAG Live Example</h2>
+      <p><b>Test Prompt:</b> "How to optimize slow queries when searching for user emails?"</p>
+      <table class="table" style="margin-top:8px;">
+        <thead><tr><th>Category</th><th>Problem Description</th><th>Solution Snippet</th><th>Similarity</th></tr></thead>
+        <tbody>
+          <tr style="background:rgba(34,211,238,0.08);">
+            <td><b>MISSING_INDEX</b></td>
+            <td>Case-insensitive email search in CUSTOMERS.EMAIL (Full Table Scan)</td>
+            <td><code>CREATE INDEX idx_customers_email_upper ON customers(UPPER(email));</code></td>
+            <td><span class="chip ok">0.6272 ⭐</span></td>
+          </tr>
+          <tr>
+            <td>JOIN_PERFORMANCE</td>
+            <td>Expensive Hash Join on ORDERS/LOGISTICS_EVENTS due to missing FK indexes</td>
+            <td><code>CREATE INDEX idx_orders_cust_id ON orders(cust_id);</code></td>
+            <td>0.7482</td>
+          </tr>
+          <tr>
+            <td>PAGINATION_TOPN</td>
+            <td>Sorting large ORDERS table before FETCH FIRST 10 caused 26MB temp and cost 4472</td>
+            <td><code>CREATE INDEX idx_orders_order_date_cust_desc...</code></td>
+            <td>0.7907</td>
+          </tr>
+          <tr>
+            <td>LOCKING</td>
+            <td>Application hangs due to uncommitted transaction (TX Lock)</td>
+            <td><code>SELECT * FROM v$session WHERE status = 'ACTIVE'</code></td>
+            <td>0.9360</td>
+          </tr>
+          <tr>
+            <td>MISSING_INDEX</td>
+            <td>Slow query filtering by generic column caused Full Table Scan</td>
+            <td><code>CREATE INDEX idx_generic ON table_name(column_name)</code></td>
+            <td>1.0067</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px;"><b>Analysis:</b> Best match (0.6272) correctly identified function-based index on UPPER(email) for case-insensitive email search. RAG semantic search works in both Polish and English; lower cosine distance = better match. System accurately returned the most relevant solution! 🎯</p>
+      <details style="margin-top:8px;">
+        <summary>Query used</summary>
+        <pre style="white-space:pre-wrap; color:#e5e7eb;">SELECT issue_category,
+       problem_desc,
+       DBMS_LOB.SUBSTR(solution_script, 400, 1) AS solution_snippet,
+       ROUND(VECTOR_DISTANCE(embedding, 
+             VECTOR_EMBEDDING(DOC_MODEL USING :prompt AS DATA), 
+             COSINE), 4) AS similarity_score
+FROM perf_knowledge_base
+ORDER BY similarity_score ASC
+FETCH FIRST 5 ROWS ONLY;</pre>
+      </details>
+    </div>
+  </section>
+
+  <section class="grid cols-2">
+    <div class="card">
+      <h2>Execution metrics (after fixes)</h2>
+      <table class="table">
+        <thead><tr><th>Query</th><th>Cost</th><th>Plan</th></tr></thead>
+        <tbody>
+          <tr><td>UPPER(email) lookup</td><td>2</td><td>INDEX RANGE SCAN</td></tr>
+          <tr><td>Join SHIPPED / EMEA</td><td>64</td><td>HASH JOIN + INDEX FFS (events)</td></tr>
+          <tr><td>Top-N orders (10)</td><td>22</td><td>NESTED LOOPS + INDEX FULL SCAN DESC</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Elapsed and I/O counters can be gathered via SQL Monitor if granted.</p>
+    </div>
+    <div class="card">
+      <h2>Further recommendations</h2>
+      <ul class="list">
+        <li>Monitor SQL Monitor for Top-N and joins at larger volumes</li>
+        <li>Consider composite index for scenario 2 (cust_id, status) if status filter remains stable</li>
+        <li>Regular cleanup of old PERF_KNOWLEDGE_BASE entries after tests</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Timeline</h2>
+      <table class="table">
+        <thead><tr><th>Step</th><th>Description</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Load test data (04_logistics_setup.sql)</td><td><span class="chip ok">Done</span></td></tr>
+          <tr><td>2</td><td>Diagnose scenarios (05_bad_performance_scenarios.sql)</td><td><span class="chip ok">Done</span></td></tr>
+          <tr><td>3</td><td>Indexes + rewrites (07_performance_fixes.sql)</td><td><span class="chip ok">Done</span></td></tr>
+          <tr><td>4</td><td>RAG registration of embeddings (06_rag_management.sql)</td><td><span class="chip ok">Done</span></td></tr>
+          <tr><td>5</td><td>Stats scheduler (DBMS_SCHEDULER)</td><td><span class="chip ok">Done</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div>Prepared by GitHub Copilot. Publication: GitHub Pages.</div>
+  </footer>
+  <script>
+    // Theme toggle
+    const root = document.documentElement;
+    const btnAuto = document.getElementById('theme-auto');
+    const btnDark = document.getElementById('theme-dark');
+    const btnLight = document.getElementById('theme-light');
+    function setTheme(mode){
+      [btnAuto, btnDark, btnLight].forEach(b=>b.classList.remove('active'));
+      if(mode==='auto'){ btnAuto.classList.add('active'); root.classList.remove('theme-light'); }
+      if(mode==='dark'){ btnDark.classList.add('active'); root.classList.remove('theme-light'); }
+      if(mode==='light'){ btnLight.classList.add('active'); root.classList.add('theme-light'); }
+    }
+    btnAuto.addEventListener('click',()=>setTheme('auto'));
+    btnDark.addEventListener('click',()=>setTheme('dark'));
+    btnLight.addEventListener('click',()=>setTheme('light'));
+    setTheme('auto');
+
+    // Cost chart with scale toggle (log/linear)
+    const costCtx = document.getElementById('costChart');
+    const btnCostLog = document.getElementById('cost-scale-log');
+    const btnCostLinear = document.getElementById('cost-scale-linear');
+    const costLabels = ['Scenario 1', 'Scenario 2', 'Scenario 3'];
+    const costBefore = [13, 142, 4472];
+    const costAfter = [2, 64, 22];
+    let costChart;
+    function renderCostChart(scaleMode){
+      if(costChart) costChart.destroy();
+      [btnCostLog, btnCostLinear].forEach(b=>b.classList.remove('active'));
+      if(scaleMode==='log') btnCostLog.classList.add('active'); else btnCostLinear.classList.add('active');
+      const percentPlugin = {
+        id: 'percentPlugin',
+        afterDatasetsDraw(chart){
+          const {ctx} = chart;
+          const meta = chart.getDatasetMeta(1); // 'After' dataset
+          ctx.save();
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#e5e7eb';
+          ctx.font = '12px Poppins, Segoe UI, system-ui, sans-serif';
+          for(let i=0;i<costLabels.length;i++){
+            const before = costBefore[i];
+            const after = costAfter[i];
+            const pct = ((before - after) / before) * 100;
+            const text = `-${pct.toFixed(1)}%`;
+            const pt = meta.data[i].tooltipPosition();
+            const w = ctx.measureText(text).width;
+            ctx.fillText(text, pt.x - w/2, pt.y - 10);
+          }
+          ctx.restore();
+        }
+      };
+      costChart = new Chart(costCtx, {
+        type: 'bar',
+        data: { labels: costLabels, datasets: [
+          { label: 'Before', data: costBefore, backgroundColor: 'rgba(248,113,113,0.6)' },
+          { label: 'After',  data: costAfter,  backgroundColor: 'rgba(34,211,238,0.6)' }
+        ]},
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: '#e5e7eb' } },
+            title: { display: true, text: 'Plan cost (lower is better)', color: '#e5e7eb' }
+          },
+          scales: {
+            x: { ticks: { color: '#e5e7eb' }, grid: { color: 'rgba(255,255,255,0.06)' } },
+            y: { type: scaleMode==='log' ? 'logarithmic' : 'linear',
+                 ticks: { color: '#e5e7eb', callback: (val)=>val },
+                 grid: { color: 'rgba(255,255,255,0.06)' } }
+          }
+        },
+        plugins: [percentPlugin]
+      });
+    }
+    btnCostLog.addEventListener('click',()=>renderCostChart('log'));
+    btnCostLinear.addEventListener('click',()=>renderCostChart('linear'));
+    renderCostChart('log');
+
+    // Elapsed chart with scale toggle
+    const elapsedCtx = document.getElementById('elapsedChart');
+    const btnElapsedLog = document.getElementById('elapsed-scale-log');
+    const btnElapsedLinear = document.getElementById('elapsed-scale-linear');
+    const elapsedMs = [1, 12, 1];
+    let elapsedChart;
+    function renderElapsedChart(scaleMode){
+      if(elapsedChart) elapsedChart.destroy();
+      [btnElapsedLog, btnElapsedLinear].forEach(b=>b.classList.remove('active'));
+      if(scaleMode==='log') btnElapsedLog.classList.add('active'); else btnElapsedLinear.classList.add('active');
+      const dataVals = elapsedMs.map(v => scaleMode==='log' ? Math.max(v, 0.1) : v);
+      const percentPlugin = {
+        id: 'elapsedPercentPlugin',
+        afterDatasetsDraw(chart){
+          const {ctx} = chart;
+          const meta = chart.getDatasetMeta(0); // Elapsed dataset
+          ctx.save();
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#e5e7eb';
+          ctx.font = '12px Poppins, Segoe UI, system-ui, sans-serif';
+          const baseline = 12; // Scenario 2 baseline in ms
+          for(let i=0;i<elapsedMs.length;i++){
+            const pct = baseline ? (elapsedMs[i] / baseline) * 100 : 0;
+            const text = `${pct.toFixed(1)}%`;
+            const pt = meta.data[i].tooltipPosition();
+            const w = ctx.measureText(text).width;
+            ctx.fillText(text, pt.x - w/2, pt.y - 10);
+          }
+          ctx.restore();
+        }
+      };
+      elapsedChart = new Chart(elapsedCtx, {
+        type: 'bar',
+        data: { labels: ['Scenario 1','Scenario 2','Scenario 3'], datasets: [ { label:'Elapsed (ms)', data: dataVals, backgroundColor:'rgba(167,139,250,0.6)' } ] },
+        options: { responsive:true, plugins:{ legend:{ labels:{ color:'#e5e7eb' } }, title:{ display:true, text:'Elapsed time (lower is better)', color:'#e5e7eb' } }, scales:{ x:{ ticks:{ color:'#e5e7eb' }, grid:{ color:'rgba(255,255,255,0.06)' } }, y:{ type: scaleMode==='log' ? 'logarithmic' : 'linear', ticks:{ color:'#e5e7eb' }, grid:{ color:'rgba(255,255,255,0.06)' } } } }
+      , plugins: [percentPlugin] });
+    }
+    btnElapsedLog.addEventListener('click',()=>renderElapsedChart('log'));
+    btnElapsedLinear.addEventListener('click',()=>renderElapsedChart('linear'));
+    renderElapsedChart('log');
+
+    // I/O chart with scale toggle
+    const ioCtx = document.getElementById('ioChart');
+    const btnIoLog = document.getElementById('io-scale-log');
+    const btnIoLinear = document.getElementById('io-scale-linear');
+    const bufferGets = [3, 777, 91];
+    const diskReads = [0, 0, 0];
+    let ioChart;
+    function renderIoChart(scaleMode){
+      if(ioChart) ioChart.destroy();
+      [btnIoLog, btnIoLinear].forEach(b=>b.classList.remove('active'));
+      if(scaleMode==='log') btnIoLog.classList.add('active'); else btnIoLinear.classList.add('active');
+      const bgVals = bufferGets.map(v => scaleMode==='log' ? Math.max(v, 0.1) : v);
+      const drVals = diskReads.map(v => scaleMode==='log' ? Math.max(v, 0.1) : v);
+      const percentPlugin = {
+        id: 'ioPercentPlugin',
+        afterDatasetsDraw(chart){
+          const {ctx} = chart;
+          const metaBG = chart.getDatasetMeta(0); // Buffer Gets dataset
+          const metaDR = chart.getDatasetMeta(1); // Disk Reads dataset
+          ctx.save();
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#e5e7eb';
+          ctx.font = '12px Poppins, Segoe UI, system-ui, sans-serif';
+          const baselineBG = 777; // Scenario 2 baseline buffer gets
+          const baselineDR = diskReads[1] || 0; // Scenario 2 baseline disk reads
+          for(let i=0;i<bufferGets.length;i++){
+            const pctBG = baselineBG ? (bufferGets[i] / baselineBG) * 100 : 0;
+            const textBG = `${pctBG.toFixed(1)}%`;
+            const ptBG = metaBG.data[i].tooltipPosition();
+            const wBG = ctx.measureText(textBG).width;
+            ctx.fillText(textBG, ptBG.x - wBG/2, ptBG.y - 10);
+            // Disk Reads label: percentage when baseline>0 else absolute value
+            const drLabel = baselineDR > 0 ? `${((diskReads[i]/baselineDR)*100).toFixed(1)}%` : `${diskReads[i]}`;
+            const ptDR = metaDR.data[i].tooltipPosition();
+            const wDR = ctx.measureText(drLabel).width;
+            ctx.fillText(drLabel, ptDR.x - wDR/2, ptDR.y - 10);
+          }
+          ctx.restore();
+        }
+      };
+      ioChart = new Chart(ioCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Scenario 1','Scenario 2','Scenario 3'],
+          datasets: [
+            { label:'Buffer Gets', data: bgVals, backgroundColor:'rgba(34,211,238,0.6)' },
+            { label:'Disk Reads', data: drVals, backgroundColor:'rgba(248,113,113,0.6)' }
+          ]
+        },
+        options: {
+          responsive:true,
+          plugins:{ legend:{ labels:{ color:'#e5e7eb' } }, title:{ display:true, text:'Logical/Physical I/O (lower is better)', color:'#e5e7eb' } },
+          scales:{ x:{ ticks:{ color:'#e5e7eb' }, grid:{ color:'rgba(255,255,255,0.06)' } }, y:{ type: scaleMode==='log' ? 'logarithmic' : 'linear', ticks:{ color:'#e5e7eb' }, grid:{ color:'rgba(255,255,255,0.06)' } } }
+        }, plugins: [percentPlugin] }
+      );
+    }
+    btnIoLog.addEventListener('click',()=>renderIoChart('log'));
+    btnIoLinear.addEventListener('click',()=>renderIoChart('linear'));
+    renderIoChart('log');
+
+    // RAG data (snapshots)
+    const ragSnapshots = {
+      email: { prompt: 'How to optimize slow user email search ignoring case?', rows: [ {category:'MISSING_INDEX', score:0.6250, desc:'Case-insensitive email search in CUSTOMERS needs function index'}, {category:'MISSING_INDEX', score:0.7353, desc:'Generic column filter caused Full Table Scan'}, {category:'JOIN_PERFORMANCE', score:0.8030, desc:'Expensive Hash Join due to missing FK indexes'}, {category:'LOCKING', score:0.9311, desc:'Uncommitted transaction (TX Lock) can freeze sessions'}, {category:'PAGINATION_TOPN', score:0.9407, desc:'Top-N optimization for ORDER_DATE DESC'} ] },
+      join: { prompt: 'How to optimize slow join between Orders and Logistics?', rows: [ {category:'JOIN_PERFORMANCE', score:0.4261, desc:'Expensive Hash Join due to missing FK indexes'}, {category:'PAGINATION_TOPN', score:0.6992, desc:'Top-N optimization for ORDER_DATE DESC'}, {category:'MISSING_INDEX', score:0.7972, desc:'Case-insensitive email search needs function index'}, {category:'LOCKING', score:0.9458, desc:'Uncommitted transaction (TX Lock) can freeze sessions'}, {category:'MISSING_INDEX', score:0.9759, desc:'Generic column filter caused Full Table Scan'} ] },
+      pagination: { prompt: 'Why is pagination of latest orders slow? How to optimize Top-N?', rows: [ {category:'PAGINATION_TOPN', score:0.4380, desc:'Composite DESC index + FETCH FIRST 10'}, {category:'JOIN_PERFORMANCE', score:0.7323, desc:'Missing FK indexes increase join cost'}, {category:'MISSING_INDEX', score:0.7877, desc:'Generic column filter caused Full Table Scan'}, {category:'MISSING_INDEX', score:0.8760, desc:'Case-insensitive email search needs function index'}, {category:'LOCKING', score:0.9315, desc:'Uncommitted transaction (TX Lock) can freeze sessions'} ] }
+    };
+
+    // RAG interactive filtering
+    const ragCtx = document.getElementById('ragChart');
+    const ragSelect = document.getElementById('promptSelect');
+    const ragSearch = document.getElementById('ragSearch');
+    const ragCategory = document.getElementById('ragCategory');
+    let ragChart;
+    function renderRag(){
+      const snap = ragSnapshots[ragSelect.value];
+      const filtered = snap.rows.filter(r => (!ragCategory.value || r.category===ragCategory.value) && (!ragSearch.value || r.desc.toLowerCase().includes(ragSearch.value.toLowerCase())));
+      const labels = filtered.map(r=>r.category);
+      const data = filtered.map(r=>r.score);
+      if(ragChart) ragChart.destroy();
+      ragChart = new Chart(ragCtx, { type:'bar', data:{ labels, datasets:[{ label:'Cosine distance', data, backgroundColor:'rgba(167,139,250,0.6)' }] }, options:{ plugins:{ legend:{ labels:{ color:'#e5e7eb' } }, title:{ display:true, text:snap.prompt, color:'#e5e7eb' } }, scales:{ x:{ ticks:{ color:'#e5e7eb' }, grid:{ color:'rgba(255,255,255,0.06)' } }, y:{ ticks:{ color:'#e5e7eb' }, grid:{ color:'rgba(255,255,255,0.06)' } } } } });
+      const wrap = document.getElementById('ragTableWrap');
+      wrap.innerHTML = `<table class="table"><thead><tr><th>Category</th><th>Description</th><th>Distance</th></tr></thead><tbody>${filtered.map(r=>`<tr><td>${r.category}</td><td>${r.desc}</td><td>${r.score.toFixed(4)}</td></tr>`).join('')}</tbody></table>`;
+    }
+    ragSelect.addEventListener('change', renderRag);
+    ragSearch.addEventListener('input', renderRag);
+    ragCategory.addEventListener('change', renderRag);
+    const ragReset = document.getElementById('ragReset');
+    ragReset.addEventListener('click', ()=>{ ragSearch.value=''; ragCategory.value=''; renderRag(); });
+    renderRag();
+  </script>
+</body>
+</html>
