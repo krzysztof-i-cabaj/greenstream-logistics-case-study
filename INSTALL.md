@@ -39,7 +39,7 @@ Before starting, make sure you have:
 Download the project files to your local disk:
 
 ```bash
-git clone https://github.com/YOUR-USER/greenstream-logistics-case-study.git
+git clone https://github.com/krzysztof-i-cabaj/greenstream-logistics-case-study.git
 cd greenstream-logistics-case-study
 ```
 
